@@ -5,17 +5,18 @@
 
 ```
 src
-├── protocol
+├── protocol   // 追加数据控制的协议
 │   ├── sql
 │   │   └── ...
-├── acl
+├── data_acl  //数据控制规则
 │   └──...
-├── ctrl_adapter
-├── endpoint
+├── ctrl_src // 数据控制源
+│   └── from_file.rs
+├── data_end  // 数据后端
 │   └──...
-├── proxy_svr
+├── proxy_srv  // 代理服务 
 │   └──...
-├── config
+├── config 
 │   └──...
 ├── app
 cargo.toml
