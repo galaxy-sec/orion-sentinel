@@ -1,16 +1,17 @@
-[[USER_ACL]]
-USER_ID = 1
-[DATA_VIEW]
-NAME = "order_view"
-SOURCE = "order_table"
-USER = "order_owner_id"
+[[USER_ACLS]]
+    USER_ID = 1
+[USER_ACLS.DATA_VIEW]
+    NAME = "order_view"
+    SOURCE = "order_table"
+    USER = "order_owner_id"
 
-[VIEW_SCOPE]
-[[cond]]
-    where = ["create_time > '2020-01-01'",
+[[USER_ACLS.VIEW_SCOPE.cond]]
+    where = [
+    "create_time > '2020-01-01'",
     "order_status NOT IN ('CANCELLED', 'PENDING')"
     ]
-[[cond]]
-   where = ["create_time > '2020-01-01'",
+[[USER_ACLS.VIEW_SCOPE.cond]]
+    where = [
+    "create_time > '2020-01-01'",
     "order_status NOT IN ('CANCELLED', 'PENDING')"
     ]
