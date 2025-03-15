@@ -1,17 +1,10 @@
-[[USER_ACLS]]
-    USER_ID = 1
-[USER_ACLS.DATA_VIEW]
-    NAME = "order_view"
-    SOURCE = "order_table"
-    USER = "order_owner_id"
+USER_ID = "U001"
+[[DATA_ACLS]]
+[DATA_ACLS.DATA_VIEW]
+NAME = "json_view"
+SOURCE = "json_source"
+USER = "json_user"
 
-[[USER_ACLS.VIEW_SCOPE.cond]]
-    where = [
-    "create_time > '2020-01-01'",
-    "order_status NOT IN ('CANCELLED', 'PENDING')"
-    ]
-[[USER_ACLS.VIEW_SCOPE.cond]]
-    where = [
-    "create_time > '2020-01-01'",
-    "order_status NOT IN ('CANCELLED', 'PENDING')"
-    ]
+[DATA_ACLS.VIEW_SCOPE]
+[[DATA_ACLS.VIEW_SCOPE.cond]]
+where = [ "modified_at > '2023-06-01'" ]

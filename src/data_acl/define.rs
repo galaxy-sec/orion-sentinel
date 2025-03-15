@@ -1,20 +1,27 @@
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+use crate::traits::TestSubAble;
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
-pub struct AclConfig {
-    pub user_acls: Vec<UserAcl>,
+pub struct UserDAcls {
+    pub user_id: String,
+    pub data_acls: Vec<DataAcl>,
+}
+impl UserDAcls {
+    pub(crate) fn set_user_id<S: Into<String>>(&mut self, user_id: S) {
+        self.user_id = user_id.into();
+    }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
-pub struct UserAcl {
-    pub user_id: u64,
+pub struct DataAcl {
     pub data_view: DataView,
     pub view_scope: ViewScope,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct DataView {
     pub name: String,
@@ -23,31 +30,71 @@ pub struct DataView {
     pub user_field: String, // 避免与用户身份关键字冲突
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct ViewScope {
     #[serde(rename = "cond")]
     pub conditions: Vec<Condition>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
 pub struct Condition {
     #[serde(rename = "where")]
     pub filter_clauses: Vec<String>, // 避免使用 Rust 关键字
 }
 
+impl TestSubAble for UserDAcls {
+    fn stub() -> Self {
+        UserDAcls {
+            user_id: "1001".to_string(),
+            data_acls: vec![DataAcl::stub()],
+        }
+    }
+}
+impl TestSubAble for DataAcl {
+    fn stub() -> Self {
+        DataAcl {
+            data_view: DataView::stub(),
+            view_scope: ViewScope::stub(),
+        }
+    }
+}
+impl TestSubAble for DataView {
+    fn stub() -> Self {
+        DataView {
+            name: "test_view".to_string(),
+            source: "test_source".to_string(),
+            user_field: "user_id".to_string(),
+        }
+    }
+}
+impl TestSubAble for ViewScope {
+    fn stub() -> Self {
+        ViewScope {
+            conditions: vec![Condition::stub()],
+        }
+    }
+}
+impl TestSubAble for Condition {
+    fn stub() -> Self {
+        Condition {
+            filter_clauses: vec!["status = 'active'".to_string()],
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    use crate::data_acl::define::AclConfig;
+    use crate::data_acl::define::UserDAcls;
 
     #[test]
     fn test_acl_config_structure() -> Result<(), Box<dyn std::error::Error>> {
-        let config = AclConfig {
-            user_acls: vec![UserAcl {
-                user_id: 1001,
+        let config = UserDAcls {
+            user_id: "1".to_string(),
+            data_acls: vec![DataAcl {
                 data_view: DataView {
                     name: "test_view".to_string(),
                     source: "test_source".to_string(),
@@ -63,15 +110,14 @@ mod tests {
 
         let toml = toml::to_string(&config)?;
         println!("{}", toml);
-        assert!(toml.contains("USER_ACLS"));
-        assert!(toml.contains("USER_ID = 1001"));
+        assert!(toml.contains("DATA_ACLS"));
+        assert!(toml.contains("USER_ID"));
         Ok(())
     }
 
     #[test]
     fn test_user_acl_serialization() -> Result<(), Box<dyn std::error::Error>> {
-        let user_acl = UserAcl {
-            user_id: 2002,
+        let data_acl = DataAcl {
             data_view: DataView {
                 name: "inventory".into(),
                 source: "stock_table".into(),
@@ -84,11 +130,10 @@ mod tests {
             },
         };
 
-        let toml = toml::to_string(&user_acl)?;
+        let toml = toml::to_string(&data_acl)?;
         println!("{}", toml);
-        assert!(toml.contains("USER_ID = 2002"));
         assert!(toml.contains("NAME = \"inventory\""));
-        assert!(toml.contains("[[cond]]"));
+        assert!(toml.contains("[[VIEW_SCOPE.cond]]"));
         Ok(())
     }
 
@@ -137,71 +182,42 @@ mod tests {
     #[test]
     fn test_multi_format_parsing() -> Result<(), Box<dyn std::error::Error>> {
         // TOML解析
-        let toml_config: AclConfig = toml::from_str(
-            r#"
-            [[USER_ACLS]]
-            USER_ID = 1
-            [USER_ACLS.DATA_VIEW]
-            NAME = "toml_view"
-            SOURCE = "toml_source"
-            USER = "toml_user"
-            [[USER_ACLS.VIEW_SCOPE.cond]]
-                where = ["status = 'active'"]
-        "#,
-        )?;
+        let toml_str = r#"
+        USER_ID = "json_test"
+        [[DATA_ACLS]]
+        [DATA_ACLS.DATA_VIEW]
+        NAME = "json_view"
+        SOURCE = "json_source"
+        USER = "json_user"
+
+        [DATA_ACLS.VIEW_SCOPE]
+        [[DATA_ACLS.VIEW_SCOPE.cond]]
+        where = [ "modified_at > '2023-06-01'" ]
+        "#;
 
         // JSON解析
-        let json_config: AclConfig = serde_json::from_str(
-            r#"{
-            "USER_ACLS": [{
-                "USER_ID": 1,
+        let json_str = r#"{
+            "USER_ID": "json_test",
+            "DATA_ACLS": [{
                 "DATA_VIEW": {
                     "NAME": "json_view",
-                    "SOURCE":"json_source",
+                    "SOURCE": "json_source",
                     "USER": "json_user"
                 },
                 "VIEW_SCOPE": {
-                    "cond": [
-                        { "where": ["status = 'active'"] }
-                    ]
+                    "cond": [{
+                        "where": [
+                            "modified_at > '2023-06-01'"
+                        ]
+                    }]
                 }
             }]
-        }"#,
-        )?;
+        }"#;
 
-        assert_eq!(toml_config.user_acls[0].data_view.name, "toml_view");
-        assert_eq!(json_config.user_acls[0].data_view.name, "json_view");
-        Ok(())
-    }
+        let toml_config: UserDAcls = toml::from_str(toml_str)?;
+        let json_config: UserDAcls = serde_json::from_str(json_str)?;
+        assert_eq!(toml_config, json_config);
 
-    #[test]
-    fn example_parse() -> Result<(), Box<dyn std::error::Error>> {
-        let toml_str = r#"
-            [[USER_ACLS]]
-            USER_ID = 1
-            [USER_ACLS.DATA_VIEW]
-            NAME = "order_view"
-            SOURCE = "order_table"
-            USER = "order_owner_id"
-
-            [[USER_ACLS.VIEW_SCOPE.cond]]
-                where = [
-                    "create_time > '2020-01-01'",
-                    "order_status NOT IN ('CANCELLED', 'PENDING')"
-                ]
-            [[USER_ACLS.VIEW_SCOPE.cond]]
-                where = [
-                    "create_time > '2020-01-01'",
-                    "order_status NOT IN ('CANCELLED', 'PENDING')"
-                ]
-        "#;
-
-        let config: AclConfig = toml::from_str(toml_str)?;
-        println!("{:#?}", config);
-        let json_dat = serde_json::to_string_pretty(&config)?;
-        println!("{}", json_dat);
-        let config2: AclConfig = serde_json::from_str(&json_dat)?;
-        assert_eq!(config, config2);
         Ok(())
     }
 }

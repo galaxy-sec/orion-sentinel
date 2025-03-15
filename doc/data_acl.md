@@ -17,21 +17,14 @@ ACL（访问控制列表）由以下三个核心要素组成：
 ## 配置示例
 
 ```toml
-[[USER_ACL]]
-USER_ID = 1
-[DATA_VIEW]
-NAME = "order_view"
-SOURCE = "order_table"
-USER = "order_owner_id"
+USER_ID = "U001"
+[[DATA_ACLS]]
+[DATA_ACLS.DATA_VIEW]
+NAME = "json_view"
+SOURCE = "json_source"
+USER = "json_user"
 
-[VIEW_SCOPE]
-[[cond]]
-    where = ["create_time > '2020-01-01'",
-    "order_status NOT IN ('CANCELLED', 'PENDING')"
-    ]
-[[cond]]
-   where = ["create_time > '2020-01-01'",
-    "order_status NOT IN ('CANCELLED', 'PENDING')"
-    ]
-
+[DATA_ACLS.VIEW_SCOPE]
+[[DATA_ACLS.VIEW_SCOPE.cond]]
+where = [ "modified_at > '2023-06-01'" ]
 ```
