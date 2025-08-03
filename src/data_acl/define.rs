@@ -1,6 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
 
 use crate::traits::TestSubAble;
+use crate::protocol::sql;
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 #[serde(rename_all = "UPPERCASE")]
@@ -42,6 +43,36 @@ pub struct ViewScope {
 pub struct Condition {
     #[serde(rename = "where")]
     pub filter_clauses: Vec<String>, // 避免使用 Rust 关键字
+}
+
+impl Condition {
+    /// 将所有filter_clauses合并为一个SQL WHERE条件
+    pub fn to_sql_where_condition(&self) -> Result<String, Box<dyn std::error::Error>> {
+        if self.filter_clauses.is_empty() {
+            return Ok(String::new());
+        }
+        
+        // 如果只有一个条件，直接返回
+        if self.filter_clauses.len() == 1 {
+            return Ok(self.filter_clauses[0].clone());
+        }
+        
+        // 如果有多个条件，使用AND连接
+        let mut result = self.filter_clauses[0].clone();
+        for clause in &self.filter_clauses[1..] {
+            result = format!("{} AND {}", result, clause);
+        }
+        Ok(result)
+    }
+    
+    /// 将SQL查询与条件合并
+    pub fn apply_to_query(&self, sql: &str) -> Result<String, Box<dyn std::error::Error>> {
+        let condition = self.to_sql_where_condition()?;
+        if condition.is_empty() {
+            return Ok(sql.to_string());
+        }
+        sql::add_where_condition(sql, &condition)
+    }
 }
 
 impl TestSubAble for UserDAcls {
@@ -178,6 +209,46 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn test_condition_to_sql_where_condition() -> Result<(), Box<dyn std::error::Error>> {
+        // 测试单个条件
+        let condition = Condition {
+            filter_clauses: vec!["status = 'active'".to_string()],
+        };
+        assert_eq!(condition.to_sql_where_condition()?, "status = 'active'");
+        
+        // 测试多个条件
+        let condition = Condition {
+            filter_clauses: vec!["status = 'active'".to_string(), "age > 18".to_string()],
+        };
+        assert_eq!(condition.to_sql_where_condition()?, "status = 'active' AND age > 18");
+        
+        // 测试空条件
+        let condition = Condition {
+            filter_clauses: vec![],
+        };
+        assert_eq!(condition.to_sql_where_condition()?, "");
+        
+        Ok(())
+    }
+    
+    #[test]
+    fn test_condition_apply_to_query() -> Result<(), Box<dyn std::error::Error>> {
+        let condition = Condition {
+            filter_clauses: vec!["status = 'active'".to_string(), "age > 18".to_string()],
+        };
+        
+        let sql = "SELECT * FROM users";
+        let result = condition.apply_to_query(sql)?;
+        assert_eq!(result, "SELECT * FROM users WHERE status = 'active' AND age > 18");
+        
+        let sql = "SELECT * FROM users WHERE gender = 'male'";
+        let result = condition.apply_to_query(sql)?;
+        assert_eq!(result, "SELECT * FROM users WHERE gender = 'male' AND status = 'active' AND age > 18");
+        
+        Ok(())
+    }
+    
     // 新增多格式解析测试
     #[test]
     fn test_multi_format_parsing() -> Result<(), Box<dyn std::error::Error>> {

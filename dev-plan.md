@@ -1,6 +1,10 @@
 
 # 开发计划
 
+## 规则
+代码的更新，都需要编译通过。
+代码的添加，都需要添加测试用例。
+开发任务，要以测试用例，测试成功为标准。
 ## 目录结构规划
 
 ```
@@ -29,6 +33,8 @@ cargo.toml
     结论：选择 `sqlparser-rs` 库，它支持 ANSI SQL:2011 标准，并能将 SQL 查询转换为抽象语法树（AST）。
 [x] 支持PostgreSQL PROXY
     结论：已在 `proxy_srv` 目录下创建 `postgresql.rs` 文件，实现了基本的 PostgreSQL 代理结构，并引入了 `tokio-postgres` 作为依赖项。
+[x] 实现 SQL WHERE 条件的增加
+    结论：已在 `src/protocol/sql/mod.rs` 中实现 SQL WHERE 条件的增加功能，使用 `sqlparser-rs` 库解析 SQL 并添加新的 WHERE 条件。
 [x] 支持PostgreSQL PROXY
     结论：选择 `pgrs` 库，它是 PostgreSQL 的 Rust 客户端库，支持 PROXY 协议。
 []  SQL 解析的添加测试用例
